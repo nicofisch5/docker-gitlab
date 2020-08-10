@@ -1,0 +1,72 @@
+version: '3.7'
+
+services:
+
+  gitlab-server:
+    image: 'gitlab/gitlab-ce:13.1.0-ce.0'
+    container_name: gitlab-server
+    hostname: gitlab-server
+    restart: unless-stopped
+    ports:
+      - '2222:22'
+    expose:
+      - 80
+      - 443
+      - 5000
+    networks:
+      - default
+      - proxy
+    volumes:
+      - gitlab-server-config:/etc/gitlab
+      - gitlab-server-logs:/var/log/gitlab
+      - gitlab-server-var:/var/opt/gitlab
+      - gitlab-server-certs:/certs
+      - gitlab-server-registry:/registry
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://${SERVER_HOSTNAME}'
+        registry_external_url 'https://${REGISTRY_HOSTNAME}'
+        letsencrypt['enable'] = false
+        nginx['client_max_body_size'] = '1024m'
+        nginx['listen_https'] = false
+        nginx['listen_port'] = 80
+        registry['registry_http_addr'] = '0.0.0.0:5000'
+        registry_nginx['enable'] = false
+        gitlab_rails['registry_key_path'] = '/certs/registry-auth.key'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+        gitlab_rails['smtp_enable'] = false
+        gitlab_rails['registry_enabled'] = true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gitlab-catch-http.rule=Host(`${SERVER_HOSTNAME}`)"
+      - "traefik.http.routers.gitlab-catch-http.entrypoints=http"
+      - "traefik.http.routers.gitlab-catch-http.middlewares=https-redirect@file"
+      - "traefik.http.routers.gitlab-catch-http.service=gitlab"
+      - "traefik.http.routers.gitlab.rule=Host(`${SERVER_HOSTNAME}`)"
+      - "traefik.http.routers.gitlab.entrypoints=https"
+      - "traefik.http.routers.gitlab.service=gitlab"
+      - "traefik.http.routers.gitlab.tls=true"
+      - "traefik.http.routers.gitlab.tls.certresolver=default"
+      - "traefik.http.services.gitlab.LoadBalancer.server.port=80"
+      - "traefik.http.routers.gitlab-registry-catch-http.rule=Host(`${REGISTRY_HOSTNAME}`)"
+      - "traefik.http.routers.gitlab-registry-catch-http.entrypoints=http"
+      - "traefik.http.routers.gitlab-registry-catch-http.middlewares=https-redirect@file"
+      - "traefik.http.routers.gitlab-registry-catch-http.service=gitlab-registry"
+      - "traefik.http.routers.gitlab-registry.rule=Host(`${REGISTRY_HOSTNAME}`)"
+      - "traefik.http.routers.gitlab-registry.entrypoints=https"
+      - "traefik.http.routers.gitlab-registry.service=gitlab-registry"
+      - "traefik.http.routers.gitlab-registry.tls=true"
+      - "traefik.http.routers.gitlab-registry.tls.certresolver=default"
+      - "traefik.http.services.gitlab-registry.LoadBalancer.server.port=5000"
+
+
+volumes:
+  gitlab-server-config:
+  gitlab-server-logs:
+  gitlab-server-var:
+  gitlab-server-certs:
+  gitlab-server-registry:
+
+networks:
+  proxy:
+    external: true
