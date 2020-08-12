@@ -2,6 +2,8 @@
 
 This repository contains a dockerized [gitlab](https://about.gitlab.com/) server instance.
 
+This README.md file was completely insprired by one written by Alexandre Haag (a delicious man).
+
 ## Requirements
 
 This project uses [docker](https://www.docker.com/what-docker) and
@@ -28,6 +30,9 @@ In order to copy the default environment variables and set your local configurat
 ```bash
 cp .env.example .env
 ```
+
+Once done, you can edit all the environment variables in the newly generated .env.
+
 ## Hostname
 
 Make sure to add the hostnames configured in `.env` file to you `/etc/hosts` file:
